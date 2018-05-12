@@ -65,23 +65,19 @@ public class RetryBotTest {
 
     @Test
     @Ignore("Example code excluded from CI")
-    public void test() {
+    public void test() throws IOException {
         IdentifyOptions options = new IdentifyOptions(shardId, shardCount, null);
 
-        try {
-            Path path = Paths.get("resume.dat");
-            if (Files.isRegularFile(path)
-                    && Files.getLastModifiedTime(path).toInstant().plusSeconds(60).isAfter(Instant.now())) {
-                for (String line : Files.readAllLines(path)) {
-                    String[] tokens = line.split(";", 2);
-                    options.setResumeSessionId(tokens[0]);
-                    options.setResumeSequence(Integer.valueOf(tokens[1]));
-                }
-            } else {
-                log.debug("Not attempting to resume");
+        Path path = Paths.get(System.getProperty("java.io.tmpdir"), "resume.dat");
+        if (Files.isRegularFile(path)
+                && Files.getLastModifiedTime(path).toInstant().plusSeconds(60).isAfter(Instant.now())) {
+            for (String line : Files.readAllLines(path)) {
+                String[] tokens = line.split(";", 2);
+                options.setResumeSessionId(tokens[0]);
+                options.setResumeSequence(Integer.valueOf(tokens[1]));
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+        } else {
+            log.debug("Not attempting to resume");
         }
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {

@@ -18,6 +18,7 @@ package discord4j.core.event.dispatch;
 
 import discord4j.core.DiscordClient;
 import discord4j.core.ServiceMediator;
+import discord4j.core.event.EventMapper;
 import discord4j.core.event.domain.*;
 import discord4j.core.event.domain.channel.TypingStartEvent;
 import discord4j.core.object.VoiceState;
@@ -37,66 +38,66 @@ import java.util.Map;
 
 /**
  * Registry for {@link discord4j.gateway.json.dispatch.Dispatch} to {@link discord4j.core.event.domain.Event}
- * mapping operations.
+ * mapping operations, performing read and write operations on the configured Store on each inbound Dispatch event.
  */
-public abstract class DispatchHandlers {
+public class DispatchHandlers implements EventMapper {
 
-    private static final Map<Class<?>, DispatchHandler<?, ?>> handlerMap = new HashMap<>();
+    private final Map<Class<?>, DispatchHandler<?, ?>> handlerMap = new HashMap<>();
 
-    static {
-        addHandler(ChannelCreate.class, ChannelDispatchHandlers::channelCreate);
-        addHandler(ChannelDelete.class, ChannelDispatchHandlers::channelDelete);
-        addHandler(ChannelPinsUpdate.class, ChannelDispatchHandlers::channelPinsUpdate);
-        addHandler(ChannelUpdate.class, ChannelDispatchHandlers::channelUpdate);
-        addHandler(GuildBanAdd.class, GuildDispatchHandlers::guildBanAdd);
-        addHandler(GuildBanRemove.class, GuildDispatchHandlers::guildBanRemove);
-        addHandler(GuildCreate.class, GuildDispatchHandlers::guildCreate);
-        addHandler(GuildDelete.class, GuildDispatchHandlers::guildDelete);
-        addHandler(GuildEmojisUpdate.class, GuildDispatchHandlers::guildEmojisUpdate);
-        addHandler(GuildIntegrationsUpdate.class, GuildDispatchHandlers::guildIntegrationsUpdate);
-        addHandler(GuildMemberAdd.class, GuildDispatchHandlers::guildMemberAdd);
-        addHandler(GuildMemberRemove.class, GuildDispatchHandlers::guildMemberRemove);
-        addHandler(GuildMembersChunk.class, GuildDispatchHandlers::guildMembersChunk);
-        addHandler(GuildMemberUpdate.class, GuildDispatchHandlers::guildMemberUpdate);
-        addHandler(GuildRoleCreate.class, GuildDispatchHandlers::guildRoleCreate);
-        addHandler(GuildRoleDelete.class, GuildDispatchHandlers::guildRoleDelete);
-        addHandler(GuildRoleUpdate.class, GuildDispatchHandlers::guildRoleUpdate);
-        addHandler(GuildUpdate.class, GuildDispatchHandlers::guildUpdate);
-        addHandler(MessageCreate.class, MessageDispatchHandlers::messageCreate);
-        addHandler(MessageDelete.class, MessageDispatchHandlers::messageDelete);
-        addHandler(MessageDeleteBulk.class, MessageDispatchHandlers::messageDeleteBulk);
-        addHandler(MessageReactionAdd.class, MessageDispatchHandlers::messageReactionAdd);
-        addHandler(MessageReactionRemove.class, MessageDispatchHandlers::messageReactionRemove);
-        addHandler(MessageReactionRemoveAll.class, MessageDispatchHandlers::messageReactionRemoveAll);
-        addHandler(MessageUpdate.class, MessageDispatchHandlers::messageUpdate);
-        addHandler(PresenceUpdate.class, DispatchHandlers::presenceUpdate);
-        addHandler(Ready.class, LifecycleDispatchHandlers::ready);
-        addHandler(Resumed.class, LifecycleDispatchHandlers::resumed);
-        addHandler(TypingStart.class, DispatchHandlers::typingStart);
-        addHandler(UserUpdate.class, DispatchHandlers::userUpdate);
-        addHandler(VoiceServerUpdate.class, DispatchHandlers::voiceServerUpdate);
-        addHandler(VoiceStateUpdateDispatch.class, DispatchHandlers::voiceStateUpdateDispatch);
-        addHandler(WebhooksUpdate.class, DispatchHandlers::webhooksUpdate);
+    private final boolean readOnly;
 
-        addHandler(GatewayStateChange.class, LifecycleDispatchHandlers::gatewayStateChanged);
+    public DispatchHandlers(boolean readOnly) {
+        this.readOnly = readOnly;
+        ChannelDispatchHandlers channel = new ChannelDispatchHandlers(readOnly);
+        GuildDispatchHandlers guild = new GuildDispatchHandlers(readOnly);
+        MessageDispatchHandlers message = new MessageDispatchHandlers(readOnly);
+        LifecycleDispatchHandlers lifecycle = new LifecycleDispatchHandlers(readOnly);
+
+        addHandler(ChannelCreate.class, channel::channelCreate);
+        addHandler(ChannelDelete.class, channel::channelDelete);
+        addHandler(ChannelPinsUpdate.class, channel::channelPinsUpdate);
+        addHandler(ChannelUpdate.class, channel::channelUpdate);
+        addHandler(GuildBanAdd.class, guild::guildBanAdd);
+        addHandler(GuildBanRemove.class, guild::guildBanRemove);
+        addHandler(GuildCreate.class, guild::guildCreate);
+        addHandler(GuildDelete.class, guild::guildDelete);
+        addHandler(GuildEmojisUpdate.class, guild::guildEmojisUpdate);
+        addHandler(GuildIntegrationsUpdate.class, guild::guildIntegrationsUpdate);
+        addHandler(GuildMemberAdd.class, guild::guildMemberAdd);
+        addHandler(GuildMemberRemove.class, guild::guildMemberRemove);
+        addHandler(GuildMembersChunk.class, guild::guildMembersChunk);
+        addHandler(GuildMemberUpdate.class, guild::guildMemberUpdate);
+        addHandler(GuildRoleCreate.class, guild::guildRoleCreate);
+        addHandler(GuildRoleDelete.class, guild::guildRoleDelete);
+        addHandler(GuildRoleUpdate.class, guild::guildRoleUpdate);
+        addHandler(GuildUpdate.class, guild::guildUpdate);
+        addHandler(MessageCreate.class, message::messageCreate);
+        addHandler(MessageDelete.class, message::messageDelete);
+        addHandler(MessageDeleteBulk.class, message::messageDeleteBulk);
+        addHandler(MessageReactionAdd.class, message::messageReactionAdd);
+        addHandler(MessageReactionRemove.class, message::messageReactionRemove);
+        addHandler(MessageReactionRemoveAll.class, message::messageReactionRemoveAll);
+        addHandler(MessageUpdate.class, message::messageUpdate);
+        addHandler(PresenceUpdate.class, this::presenceUpdate);
+        addHandler(Ready.class, lifecycle::ready);
+        addHandler(Resumed.class, lifecycle::resumed);
+        addHandler(TypingStart.class, this::typingStart);
+        addHandler(UserUpdate.class, this::userUpdate);
+        addHandler(VoiceServerUpdate.class, this::voiceServerUpdate);
+        addHandler(VoiceStateUpdateDispatch.class, this::voiceStateUpdateDispatch);
+        addHandler(WebhooksUpdate.class, this::webhooksUpdate);
+
+        addHandler(GatewayStateChange.class, lifecycle::gatewayStateChanged);
     }
 
-    private static <D extends Dispatch, E extends Event> void addHandler(Class<D> dispatchType,
-                                                                         DispatchHandler<D, E> dispatchHandler) {
+    private <D extends Dispatch, E extends Event> void addHandler(Class<D> dispatchType,
+            DispatchHandler<D, E> dispatchHandler) {
         handlerMap.put(dispatchType, dispatchHandler);
     }
 
-    /**
-     * Process a {@link discord4j.gateway.json.dispatch.Dispatch} object wrapped with its context to
-     * potentially obtain an {@link discord4j.core.event.domain.Event}.
-     *
-     * @param context the DispatchContext used with this Dispatch object
-     * @param <D> the Dispatch type
-     * @param <E> the resulting Event type
-     * @return an Event mapped from the given Dispatch object, or null if no Event is produced.
-     */
+    @Override
     @SuppressWarnings("unchecked")
-    public static <D extends Dispatch, E extends Event> Mono<E> handle(DispatchContext<D> context) {
+    public <D extends Dispatch, E extends Event> Mono<E> handle(DispatchContext<D> context) {
         DispatchHandler<D, E> entry = (DispatchHandler<D, E>) handlerMap.get(context.getDispatch().getClass());
         if (entry == null) {
             return Mono.empty();
@@ -104,7 +105,11 @@ public abstract class DispatchHandlers {
         return entry.handle(context);
     }
 
-    private static Mono<PresenceUpdateEvent> presenceUpdate(DispatchContext<PresenceUpdate> context) {
+    private <T> Mono<T> emptyIfReadOnly(Mono<T> mono) {
+        return readOnly ? Mono.empty() : mono;
+    }
+
+    private Mono<PresenceUpdateEvent> presenceUpdate(DispatchContext<PresenceUpdate> context) {
         ServiceMediator serviceMediator = context.getServiceMediator();
         DiscordClient client = serviceMediator.getClient();
 
@@ -114,7 +119,7 @@ public abstract class DispatchHandlers {
         PresenceBean bean = new PresenceBean(context.getDispatch());
         Presence current = new Presence(bean);
 
-        Mono<Void> saveNew = serviceMediator.getStateHolder().getPresenceStore().save(key, bean);
+        Mono<Void> saveNew = emptyIfReadOnly(serviceMediator.getStateHolder().getPresenceStore().save(key, bean));
 
         return serviceMediator.getStateHolder().getPresenceStore()
                 .find(key)
@@ -123,7 +128,7 @@ public abstract class DispatchHandlers {
                 .switchIfEmpty(saveNew.thenReturn(new PresenceUpdateEvent(client, guildId, userId, current, null)));
     }
 
-    private static Mono<TypingStartEvent> typingStart(DispatchContext<TypingStart> context) {
+    private Mono<TypingStartEvent> typingStart(DispatchContext<TypingStart> context) {
         DiscordClient client = context.getServiceMediator().getClient();
         long channelId = context.getDispatch().getChannelId();
         long userId = context.getDispatch().getUserId();
@@ -132,14 +137,14 @@ public abstract class DispatchHandlers {
         return Mono.just(new TypingStartEvent(client, channelId, userId, startTime));
     }
 
-    private static Mono<UserUpdateEvent> userUpdate(DispatchContext<UserUpdate> context) {
+    private Mono<UserUpdateEvent> userUpdate(DispatchContext<UserUpdate> context) {
         ServiceMediator serviceMediator = context.getServiceMediator();
         DiscordClient client = serviceMediator.getClient();
 
         UserBean bean = new UserBean(context.getDispatch().getUser());
         User current = new User(serviceMediator, bean);
 
-        Mono<Void> saveNew = serviceMediator.getStateHolder().getUserStore().save(bean.getId(), bean);
+        Mono<Void> saveNew = emptyIfReadOnly(serviceMediator.getStateHolder().getUserStore().save(bean.getId(), bean));
 
         return serviceMediator.getStateHolder().getUserStore()
                 .find(context.getDispatch().getUser().getId())
@@ -148,7 +153,7 @@ public abstract class DispatchHandlers {
                 .switchIfEmpty(saveNew.thenReturn(new UserUpdateEvent(client, current, null)));
     }
 
-    private static Mono<Event> voiceServerUpdate(DispatchContext<VoiceServerUpdate> context) {
+    private Mono<Event> voiceServerUpdate(DispatchContext<VoiceServerUpdate> context) {
         DiscordClient client = context.getServiceMediator().getClient();
         String token = context.getDispatch().getToken();
         long guildId = context.getDispatch().getGuildId();
@@ -157,8 +162,8 @@ public abstract class DispatchHandlers {
         return Mono.just(new VoiceServerUpdateEvent(client, token, guildId, endpoint));
     }
 
-    private static Mono<VoiceStateUpdateEvent> voiceStateUpdateDispatch(DispatchContext<VoiceStateUpdateDispatch>
-                                                                                context) {
+    private Mono<VoiceStateUpdateEvent> voiceStateUpdateDispatch(DispatchContext<VoiceStateUpdateDispatch>
+            context) {
         ServiceMediator serviceMediator = context.getServiceMediator();
         DiscordClient client = serviceMediator.getClient();
 
@@ -169,7 +174,7 @@ public abstract class DispatchHandlers {
         VoiceStateBean bean = new VoiceStateBean(context.getDispatch().getVoiceState());
         VoiceState current = new VoiceState(serviceMediator, bean);
 
-        Mono<Void> saveNew = serviceMediator.getStateHolder().getVoiceStateStore().save(key, bean);
+        Mono<Void> saveNew = emptyIfReadOnly(serviceMediator.getStateHolder().getVoiceStateStore().save(key, bean));
 
         return serviceMediator.getStateHolder().getVoiceStateStore()
                 .find(key)
@@ -178,7 +183,7 @@ public abstract class DispatchHandlers {
                 .switchIfEmpty(saveNew.thenReturn(new VoiceStateUpdateEvent(client, current, null)));
     }
 
-    private static Mono<Event> webhooksUpdate(DispatchContext<WebhooksUpdate> context) {
+    private Mono<Event> webhooksUpdate(DispatchContext<WebhooksUpdate> context) {
         long guildId = context.getDispatch().getGuildId();
         long channelId = context.getDispatch().getChannelId();
 

@@ -25,6 +25,7 @@ import discord4j.common.json.MessageResponse;
 import discord4j.rest.RestTests;
 import discord4j.rest.json.request.MessageCreateRequest;
 import discord4j.rest.request.Router;
+import discord4j.rest.request.DefaultRouter;
 import discord4j.rest.route.Routes;
 import org.junit.Test;
 import reactor.core.publisher.Mono;
