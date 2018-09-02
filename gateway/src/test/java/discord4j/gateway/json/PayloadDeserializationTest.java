@@ -230,4 +230,67 @@ public class PayloadDeserializationTest {
         assertEquals(11, payload.getOp().getRawOp());
         assertNull(payload.getData());
     }
+
+    @Test
+    public void testStatusUpdate() throws IOException {
+        String input = "{\n" +
+                "    \"op\": 3,\n" +
+                "    \"d\":{\n" +
+                "        \"since\": 91879201,\n" +
+                "        \"game\": {\n" +
+                "            \"name\": \"some_game\",\n" +
+                "            \"type\": 0\n" +
+                "        },\n" +
+                "        \"status\": \"online\",\n" +
+                "        \"afk\": false\n" +
+                "    },\n" +
+                "    \"s\":null,\n" +
+                "    \"t\":null\n" +
+                "}";
+        GatewayPayload<StatusUpdate> payload = mapper.readValue(input, GatewayPayload.class);
+
+        assertEquals(3, payload.getOp().getRawOp());
+        assertNotNull(payload.getData());
+        assertTrue(payload.getData().toString().contains("since=91879201"));
+        assertTrue(payload.getData().toString().contains("name=some_game"));
+    }
+
+    @Test
+    public void testVoiceStateUpdate() throws IOException {
+        String input = "{\n" +
+                "    \"op\":4,\n" +
+                "    \"d\":{\n" +
+                "        \"guild_id\": \"41771983423143937\",\n" +
+                "        \"channel_id\": \"127121515262115840\",\n" +
+                "        \"self_mute\": false,\n" +
+                "        \"self_deaf\": false\n" +
+                "    },\n" +
+                "    \"s\":null,\n" +
+                "    \"t\":null\n" +
+                "}";
+        GatewayPayload<VoiceStateUpdate> payload = mapper.readValue(input, GatewayPayload.class);
+
+        assertEquals(4, payload.getOp().getRawOp());
+        assertNotNull(payload.getData());
+        assertTrue(payload.getData().toString().contains("guildId=41771983423143937"));
+    }
+
+    @Test
+    public void testRequestGuildMembers() throws IOException {
+        String input = "{\n" +
+                "    \"op\":8,\n" +
+                "    \"d\":{\n" +
+                "        \"guild_id\": \"41771983444115456\",\n" +
+                "        \"query\": \"\",\n" +
+                "        \"limit\": 0\n" +
+                "    },\n" +
+                "    \"s\":null,\n" +
+                "    \"t\":null\n" +
+                "}";
+        GatewayPayload<RequestGuildMembers> payload = mapper.readValue(input, GatewayPayload.class);
+
+        assertEquals(8, payload.getOp().getRawOp());
+        assertNotNull(payload.getData());
+        assertTrue(payload.getData().toString().contains("guildId=41771983444115456"));
+    }
 }
